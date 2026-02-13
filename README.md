@@ -88,3 +88,175 @@ src/scanner/
   main.py              # single-process runtime (api + scanner)
 ```
 
+## Configuration
+
+The service uses a YAML config file (recommended):
+
+- copy from `configs/config.example.yaml` → `configs/config.yaml`
+- set your Monad **RPC URL** and **DB URL**
+- toggle analyzers and the minimum stored severity threshold
+
+Example:
+
+```yaml
+rpc:
+  url: "https://rpc.monad.xyz"
+
+db:
+  url: "postgresql+psycopg://scanner:scanner@localhost:5432/monad_scanner"
+
+analysis:
+  ordering_sensitivity: true
+  conflict_patterns: true
+  hot_state: true
+  hidden_dependencies: true
+
+signals:
+  min_severity_to_store: 20
+```
+
+---
+
+## Quickstart (local)
+
+### Requirements
+- Python 3.11+
+- Docker (optional, for Postgres)
+
+### 1) Create config
+```bash
+cp configs/config.example.yaml configs/config.yaml
+```
+
+### 2) Start Postgres (optional)
+```bash
+docker-compose up -d db
+```
+
+### 3) Install
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -U pip
+pip install -e .
+```
+
+### 4) Run migrations
+```bash
+alembic upgrade head
+```
+
+### 5) Run the service (API + scanner)
+```bash
+python -m scanner.main
+```
+
+Default API address:
+- `http://localhost:8080`
+
+---
+
+## Docker
+
+Build and run:
+
+```bash
+docker-compose up --build
+```
+
+---
+
+## API endpoints
+
+Base path: `/v1`
+
+### Health
+`GET /v1/health`
+
+Response:
+```json
+{"ok": true}
+```
+
+### Latest observed block
+`GET /v1/blocks/latest`
+
+### Scans
+`GET /v1/scans?limit=50`
+
+### Signals
+`GET /v1/signals?severity_gte=60&category=ordering`
+
+Signal fields:
+- `signal_id`
+- `block_number`
+- `category`
+- `severity`
+- `confidence`
+- `title`
+- `explanation`
+- `evidence`
+- `recommended_actions`
+
+---
+
+## How signals map to real risk
+
+### Ordering sensitivity
+Ordering risk emerges when outcomes vary based on adjacency/ordering:
+- shared-state patterns
+- implicit sequencing assumptions
+- contention and non-deterministic interference under load
+
+### Conflict / failure bursts
+A failure burst is often a symptom of:
+- shared resources (nonces, allowances, shared state locks)
+- unstable execution paths (edge cases under load)
+- hot contracts with high write pressure
+
+### Hot state
+Hot state zones can degrade throughput and amplify interference:
+- a small number of keys/contracts dominate writes
+- event-topic repetition indicates concentrated flows
+- hotspots correlate with transient performance cliffs
+
+### Hidden dependencies
+Hidden coupling creates “surprise” cascades:
+- transaction flows become implicitly linked
+- one path’s failure increases probability of another’s failure
+- under load, coupling amplifies instability
+
+---
+
+## Data availability notes (Monad)
+
+The scanner is designed for **progressive enrichment**:
+
+- **Minimal mode:** blocks + tx hashes
+- **Enhanced mode:** receipts + logs (if RPC supports it)
+- **Full mode:** execution traces (addable via provider interface)
+
+RPC adapters live in:
+- `src/scanner/rpc/monad_client.py`
+
+---
+
+## Extending the scanner
+
+### Add a new analyzer
+1. Create a module in `src/scanner/analyzers/`
+2. Implement `analyze(ctx)` to return findings
+3. Wire it in `PipelineRunner` and add config toggle
+
+### Improve scoring/explanations
+- scoring: `src/scanner/signals/scorer.py`
+- explanations: `src/scanner/signals/explain.py`
+
+---
+
+## Security considerations
+- Use a trusted RPC endpoint with rate limits and authentication (if possible)
+- Configure strict timeouts and retries
+- Consider splitting into two services for production:
+  - API service (read-only)
+  - worker service (scanner loop)
