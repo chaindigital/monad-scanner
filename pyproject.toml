@@ -1,0 +1,47 @@
+[build-system]
+requires = ["setuptools>=69.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chain-digital-monad-scanner"
+version = "0.1.0"
+description = "Monad execution/state risk scanner backend (Chain Digital)."
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [{name="Chain Digital"}]
+dependencies = [
+  "fastapi>=0.111.0",
+  "uvicorn[standard]>=0.30.0",
+  "pydantic>=2.7.0",
+  "pydantic-settings>=2.3.0",
+  "httpx>=0.27.0",
+  "sqlalchemy>=2.0.30",
+  "psycopg[binary]>=3.1.19",
+  "alembic>=1.13.2",
+  "pyyaml>=6.0.1",
+  "orjson>=3.10.3",
+  "tenacity>=8.3.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "ruff>=0.5.5",
+  "pytest>=8.2.2",
+]
+
+[project.scripts]
+monad-scanner = "scanner.cli.app:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
