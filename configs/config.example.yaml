@@ -1,0 +1,32 @@
+app:
+  name: "Chain Digital — Monad Risk Scanner"
+  host: "0.0.0.0"
+  port: 8080
+  log_level: "INFO"
+
+chain:
+  id: "monad-mainnet"   # logical identifier (can be testnet/devnet)
+  confirmations: 0      # if you want to lag behind head, set >0
+
+rpc:
+  url: "https://rpc.monad.xyz"
+  timeout_seconds: 10
+  max_retries: 5
+
+db:
+  url: "postgresql+psycopg://scanner:scanner@localhost:5432/monad_scanner"
+
+scanner:
+  poll_interval_seconds: 3
+  max_blocks_per_tick: 5
+  backfill_start_block: null  # set an integer to backfill from that height
+
+analysis:
+  # Analyzer toggles: enable/disable modules quickly
+  ordering_sensitivity: true
+  conflict_patterns: true
+  hot_state: true
+  hidden_dependencies: true
+
+signals:
+  min_severity_to_store: 20
